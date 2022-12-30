@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'dart:ui' as ui;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_signature_pad/flutter_signature_pad.dart';
 
 void main() {
   runApp(const MyApp());
@@ -40,7 +44,33 @@ class _MyHomePageState extends State<MyHomePage> {
   int? startPosition;
   int? endPosition;
 
+  final _sign = GlobalKey<SignatureState>();
+  ByteData _img = ByteData(0);
+
   List<List<int>> undoPositions = [];
+
+  void selectColor() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Choose Color'),
+        content: SingleChildScrollView(
+          child: BlockPicker(
+            pickerColor: brushColor,
+            onColorChanged: (color) {
+              this.setState(() {
+                brushColor = color;
+              });
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: Text('Close'))
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -59,123 +89,163 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
         centerTitle: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.blue,
         elevation: 0,
       ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-                gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                  Color.fromRGBO(138, 35, 135, 1.0),
-                  Color.fromRGBO(233, 64, 87, 1.0),
-                  Color.fromRGBO(242, 113, 33, 1.0),
-                ])),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: width * 0.8,
-                  height: height * 0.7,
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.4),
-                            blurRadius: 5.0,
-                            spreadRadius: 1.0)
-                      ]),
-                  child: GestureDetector(
-                    onPanDown: (details) {
-                      startPosition = points.length;
-                      this.setState(() {
-                        points.add(details.localPosition);
-                      });
-                    },
-                    onPanUpdate: (details) {
-                      this.setState(() {
-                        points.add(details.localPosition);
-                      });
-                    },
-                    onPanEnd: (details) {
-                      endPosition = points.length;
-                      this.setState(() {
-                        points.add(null);
-                      });
-                      if (startPosition != null && endPosition != null)
-                        undoPositions.add([startPosition!, endPosition!]);
-                      startPosition = null;
-                      endPosition = null;
-                    },
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: CustomPaint(
-                        painter:
-                            MyCustomPainter(points, brushColor, brushSize),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                    Color.fromRGBO(138, 35, 135, 1.0),
+                    Color.fromRGBO(233, 64, 87, 1.0),
+                    Color.fromRGBO(242, 113, 33, 1.0),
+                  ])),
+            ),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: width * 0.8,
+                    height: height * 0.7,
+                    decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 5.0,
+                              spreadRadius: 1.0)
+                        ]),
+                    child: GestureDetector(
+                      onPanDown: (details) {
+                        startPosition = points.length;
+                        this.setState(() {
+                          points.add(details.localPosition);
+                        });
+                      },
+                      onPanUpdate: (details) {
+                        this.setState(() {
+                          points.add(details.localPosition);
+                        });
+                      },
+                      onPanEnd: (details) {
+                        endPosition = points.length;
+                        this.setState(() {
+                          points.add(null);
+                        });
+                        if (startPosition != null && endPosition != null)
+                          undoPositions.add([startPosition!, endPosition!]);
+                        startPosition = null;
+                        endPosition = null;
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: CustomPaint(
+                          painter:
+                              MyCustomPainter(points, brushColor, brushSize),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  height: 20,
-                ),
-                Container(
-                  width: width * 0.8,
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.4),
-                            blurRadius: 5.0,
-                            spreadRadius: 1.0)
-                      ]),
-                  child: Row(
-                    children: [
-                      IconButton(
-                          onPressed: () {}, icon: Icon(Icons.color_lens)),
-                      IconButton(
-                          onPressed: () {
-                            if (undoPositions.isNotEmpty) {
-                              this.setState(() {
-                                points.replaceRange(undoPositions.last[0],
-                                    undoPositions.last[1], []);
-                              });
-                              undoPositions.removeLast();
-                            }
-                          },
-                          icon: Icon(
-                            Icons.undo,
-                            color: undoPositions.isNotEmpty
-                                ? Colors.black
-                                : Colors.grey,
-                          )),
-                      IconButton(
-                          onPressed: () {
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Container(
+                    width: width * 0.8,
+                    decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 5.0,
+                              spreadRadius: 1.0)
+                        ]),
+                    child: Row(
+                      children: [
+                        IconButton(
+                            onPressed: () {
+                              selectColor();
+                            },
+                            icon: Icon(
+                              Icons.color_lens,
+                              color: brushColor,
+                            )),
+                        Expanded(
+                            child: Slider(
+                          value: brushSize,
+                          onChanged: (val) {
                             this.setState(() {
-                              points.clear();
-                              undoPositions.clear();
+                              brushSize = val;
                             });
                           },
-                          icon: Icon(
-                            Icons.layers_clear,
-                            color: undoPositions.isNotEmpty
-                                ? Colors.black
-                                : Colors.grey,
-                          ))
-                    ],
+                          min: 1.0,
+                          max: 20.0,
+                        )),
+                        IconButton(
+                            onPressed: () {
+                              if (undoPositions.isNotEmpty) {
+                                this.setState(() {
+                                  points.replaceRange(undoPositions.last[0],
+                                      undoPositions.last[1], []);
+                                });
+                                undoPositions.removeLast();
+                              }
+                            },
+                            icon: Icon(
+                              Icons.undo,
+                              color: undoPositions.isNotEmpty
+                                  ? Colors.black
+                                  : Colors.grey,
+                            )),
+                        IconButton(
+                            onPressed: () {
+                              this.setState(() {
+                                points.clear();
+                                undoPositions.clear();
+                              });
+                            },
+                            icon: Icon(
+                              Icons.layers_clear,
+                              color: undoPositions.isNotEmpty
+                                  ? Colors.black
+                                  : Colors.grey,
+                            ))
+                      ],
+                    ),
                   ),
-                )
-              ],
-            ),
-          )
-        ],
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Container(
+                    width: width * 0.2,
+                    decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 5.0,
+                              spreadRadius: 1.0)
+                        ]),
+                    child: IconButton(
+                      icon: Icon(Icons.download),
+                      onPressed: () async {
+
+                      },
+                    ),
+                  )
+                ],
+              ),
+            )
+          ],
+        ),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
@@ -189,7 +259,7 @@ class MyCustomPainter extends CustomPainter {
   MyCustomPainter(this.points, this.brushColor, this.brushSize);
 
   @override
-  void paint(Canvas canvas, Size size) {
+  void paint(Canvas canvas, Size size) async {
     Paint background = Paint()..color = Colors.white;
     Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
     canvas.drawRect(rect, background);
