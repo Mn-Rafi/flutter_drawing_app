@@ -34,6 +34,20 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   List<Offset?> points = [];
+  late Color brushColor;
+  late double brushSize;
+
+  int? startPosition;
+  int? endPosition;
+
+  List<List<int>> undoPositions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    brushColor = Colors.black;
+    brushSize = 2.0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,27 +93,31 @@ class _MyHomePageState extends State<MyHomePage> {
                       ]),
                   child: GestureDetector(
                     onPanDown: (details) {
-                      print('1');
+                      startPosition = points.length;
                       this.setState(() {
                         points.add(details.localPosition);
                       });
                     },
                     onPanUpdate: (details) {
-                      print('2');
                       this.setState(() {
                         points.add(details.localPosition);
                       });
                     },
                     onPanEnd: (details) {
-                      print('3');
+                      endPosition = points.length;
                       this.setState(() {
                         points.add(null);
                       });
+                      if (startPosition != null && endPosition != null)
+                        undoPositions.add([startPosition!, endPosition!]);
+                      startPosition = null;
+                      endPosition = null;
                     },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: CustomPaint(
-                        painter: MyCustomPainter(points),
+                        painter:
+                            MyCustomPainter(points, brushColor, brushSize),
                       ),
                     ),
                   ),
@@ -123,7 +141,34 @@ class _MyHomePageState extends State<MyHomePage> {
                       IconButton(
                           onPressed: () {}, icon: Icon(Icons.color_lens)),
                       IconButton(
-                          onPressed: () {}, icon: Icon(Icons.layers_clear))
+                          onPressed: () {
+                            if (undoPositions.isNotEmpty) {
+                              this.setState(() {
+                                points.replaceRange(undoPositions.last[0],
+                                    undoPositions.last[1], []);
+                              });
+                              undoPositions.removeLast();
+                            }
+                          },
+                          icon: Icon(
+                            Icons.undo,
+                            color: undoPositions.isNotEmpty
+                                ? Colors.black
+                                : Colors.grey,
+                          )),
+                      IconButton(
+                          onPressed: () {
+                            this.setState(() {
+                              points.clear();
+                              undoPositions.clear();
+                            });
+                          },
+                          icon: Icon(
+                            Icons.layers_clear,
+                            color: undoPositions.isNotEmpty
+                                ? Colors.black
+                                : Colors.grey,
+                          ))
                     ],
                   ),
                 )
@@ -138,8 +183,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
 class MyCustomPainter extends CustomPainter {
   final List<Offset?> points;
+  final Color brushColor;
+  final double brushSize;
 
-  MyCustomPainter(this.points);
+  MyCustomPainter(this.points, this.brushColor, this.brushSize);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -147,8 +194,8 @@ class MyCustomPainter extends CustomPainter {
     Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
     canvas.drawRect(rect, background);
     Paint paint = Paint();
-    paint.color = Colors.black;
-    paint.strokeWidth = 2.0;
+    paint.color = brushColor;
+    paint.strokeWidth = brushSize;
     paint.isAntiAlias = true;
     paint.strokeCap = StrokeCap.round;
 
