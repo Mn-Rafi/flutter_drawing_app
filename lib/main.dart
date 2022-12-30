@@ -44,8 +44,7 @@ class _MyHomePageState extends State<MyHomePage> {
   int? startPosition;
   int? endPosition;
 
-  final _sign = GlobalKey<SignatureState>();
-  ByteData _img = ByteData(0);
+  bool isInteractiveTransform = false;
 
   List<List<int>> undoPositions = [];
 
@@ -111,46 +110,65 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    width: width * 0.8,
-                    height: height * 0.7,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withOpacity(0.4),
-                              blurRadius: 5.0,
-                              spreadRadius: 1.0)
-                        ]),
-                    child: GestureDetector(
-                      onPanDown: (details) {
-                        startPosition = points.length;
-                        this.setState(() {
-                          points.add(details.localPosition);
-                        });
-                      },
-                      onPanUpdate: (details) {
-                        this.setState(() {
-                          points.add(details.localPosition);
-                        });
-                      },
-                      onPanEnd: (details) {
-                        endPosition = points.length;
-                        this.setState(() {
-                          points.add(null);
-                        });
-                        if (startPosition != null && endPosition != null)
-                          undoPositions.add([startPosition!, endPosition!]);
-                        startPosition = null;
-                        endPosition = null;
-                      },
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: CustomPaint(
-                          painter:
-                              MyCustomPainter(points, brushColor, brushSize),
-                        ),
-                      ),
+                  InteractiveViewer(
+                    minScale: 0.01,
+                    maxScale: 25,
+                    child: Container(
+                      width: width * 0.8,
+                      height: height * 0.7,
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.4),
+                                blurRadius: 5.0,
+                                spreadRadius: 1.0)
+                          ]),
+                      child: !isInteractiveTransform
+                          ? GestureDetector(
+                              onPanDown: (details) {
+                                if (!isInteractiveTransform) {
+                                  startPosition = points.length;
+                                  this.setState(() {
+                                    points.add(details.localPosition);
+                                  });
+                                }
+                              },
+                              onPanUpdate: (details) {
+                                if (!isInteractiveTransform)
+                                  this.setState(() {
+                                    points.add(details.localPosition);
+                                  });
+                              },
+                              onPanEnd: (details) {
+                                if (!isInteractiveTransform) {
+                                  endPosition = points.length;
+                                  this.setState(() {
+                                    points.add(null);
+                                  });
+                                  if (startPosition != null &&
+                                      endPosition != null)
+                                    undoPositions
+                                        .add([startPosition!, endPosition!]);
+                                  startPosition = null;
+                                  endPosition = null;
+                                }
+                              },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: CustomPaint(
+                                  painter: MyCustomPainter(
+                                      points, brushColor, brushSize),
+                                ),
+                              ),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: CustomPaint(
+                                painter: MyCustomPainter(
+                                    points, brushColor, brushSize),
+                              ),
+                            ),
                     ),
                   ),
                   SizedBox(
@@ -176,6 +194,19 @@ class _MyHomePageState extends State<MyHomePage> {
                             icon: Icon(
                               Icons.color_lens,
                               color: brushColor,
+                            )),
+                        IconButton(
+                            onPressed: () {
+                              this.setState(() {
+                                isInteractiveTransform =
+                                    !isInteractiveTransform;
+                              });
+                            },
+                            icon: Icon(
+                              Icons.zoom_in_map,
+                              color: isInteractiveTransform
+                                  ? Colors.red
+                                  : Colors.black,
                             )),
                         Expanded(
                             child: Slider(
@@ -236,9 +267,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ]),
                     child: IconButton(
                       icon: Icon(Icons.download),
-                      onPressed: () async {
-
-                      },
+                      onPressed: () async {},
                     ),
                   )
                 ],
